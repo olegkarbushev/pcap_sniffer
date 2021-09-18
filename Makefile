@@ -9,6 +9,7 @@ CXX_COMMON_SRC =
 
 CXX_SRC = $(SRC_DIR)/main.c
 CXX_SRC += $(SRC_DIR)/packet_handler.c
+CXX_SRC += $(SRC_DIR)/socket_registry.c
 CXX_SRC += $(CXX_COMMON_SRC)
 
 CXX_LIB_SRC =
@@ -17,6 +18,8 @@ CXX_LIB_SRC += $(CXX_COMMON_SRC)
 INCLUDES = -I$(SRC_DIR)/
 INCLUDES += -I$(SRC_DIR)/include/
 INCLUDES += -I$(SRC_DIR)/libpcap/
+# this command will obtain required include folders for Glib
+INCLUDES += $(shell pkg-config --cflags glib-2.0)
 
 VPATH = $(dir $(CXX_SRC))
 
@@ -32,10 +35,11 @@ CXX_LIB_OBJS_STRIPPED += $(patsubst %.c, %.o, $(notdir $(filter %.c, $(CXX_LIB_S
 CXX_LIB_OBJS := $(addprefix $(OBJ_DIR)/, $(CXX_LIB_OBJS_STRIPPED))
 
 LIBS = -lpcap
+LIBS += -lpthread
 # required by libpcap, to avoid errors: reference to "dbus_* is undefined"
 LIBS += -ldbus-1
-
-#LIBS += -l
+# this command will obtain the specific Glib version
+LIBS += $(shell pkg-config --libs glib-2.0)
 
 LIBS_DIR = -L$(SRC_DIR)/libpcap/
 

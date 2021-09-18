@@ -6,6 +6,7 @@
 
 #include <pcap.h>
 
+#include "socket_registry.h"
 #include "packet_handler.h"
 
 #define ALIGNMENT_SPACES 20
@@ -109,8 +110,12 @@ int main(int argc, char *argv[]) {
 
     printf("Listening %s, filter: %s...\n", device, filter);
 
+    registry_init();
+
     res = pcap_loop(pcap, -1, handle_packet, NULL);
     printf("pcap_loop returned %d\n", res);
+
+    registry_destory();
 
     pcap_close(pcap);
     return 0;
