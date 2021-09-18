@@ -8,12 +8,14 @@ SRC_DIR = src
 CXX_COMMON_SRC =
 
 CXX_SRC = $(SRC_DIR)/main.c
+CXX_SRC += $(SRC_DIR)/packet_handler.c
 CXX_SRC += $(CXX_COMMON_SRC)
 
 CXX_LIB_SRC =
 CXX_LIB_SRC += $(CXX_COMMON_SRC)
 
 INCLUDES = -I$(SRC_DIR)/
+INCLUDES += -I$(SRC_DIR)/include/
 INCLUDES += -I$(SRC_DIR)/libpcap/
 
 VPATH = $(dir $(CXX_SRC))
