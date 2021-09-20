@@ -10,6 +10,7 @@ CXX_COMMON_SRC =
 CXX_SRC = $(SRC_DIR)/main.c
 CXX_SRC += $(SRC_DIR)/packet_handler.c
 CXX_SRC += $(SRC_DIR)/socket_registry.c
+CXX_SRC += $(SRC_DIR)/logger.c
 CXX_SRC += $(CXX_COMMON_SRC)
 
 CXX_LIB_SRC =

@@ -21,8 +21,10 @@
 #include "include/net_headers.h"
 #include "socket_container.h"
 
+#include "logger.h"
+
 void registry_init();
-void registry_destory();
+void registry_destroy();
 
 GHashTable* registry_get_table();
 

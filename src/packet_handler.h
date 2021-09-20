@@ -8,6 +8,8 @@
 
 #include "socket_container.h"
 
+#include "logger.h"
+
 // not used for now
 #define PRINT_BYTES_PER_LINE 16
 

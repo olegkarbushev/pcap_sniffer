@@ -111,25 +111,25 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
         uint8_t masked_flags = flags & (SYN_BIT + ACK_BIT + FIN_BIT);
         switch (masked_flags) {
             case SYN_BIT: /* SYN */
-                //printf("\r\n1. SYN %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: %#02x \r\n",
-                //        source_ip_str, source_port, dest_ip_str, dest_port,
-                //        syn, fin, ack, flags);
+                log_printf(LOG_DEBUG, "\r\n1. SYN %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: "PRINTF_BIN_FMT_INT8 " \r\n",
+                        source_ip_str, source_port, dest_ip_str, dest_port,
+                        syn, fin, ack, PRINTF_BINARY_INT8(flags));
 
                 new_socket.state = SYN;
                 new_socket.status = CONNECTING;
 
                 sprintf(key, "%s:%d-%s:%d", source_ip_str, source_port, dest_ip_str, dest_port);
-                //printf("key: %s \r\n", key);
+                log_printf(LOG_VERBOSE, "key: %s \r\n", key);
 
                 _socket = registry_get_socket(key);
                 if ( _socket ) {
                     // TODO: here must be more robust retries handling
-                    printf("SYN retries %d for: %s \r\n", ++(_socket->retries), key);
+                    log_printf(LOG_DEBUG, "SYN retries %d for: %s \r\n", ++(_socket->retries), key);
                     _socket->flags = flags;
                     if (_socket->retries >= 6 ) {
                         _socket->status = FAILED;
                               //FAILED
-                        printf("FAILED       %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
+                        log_printf(LOG_INFO, "FAILED       %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
                                 source_ip_str, source_port, dest_ip_str, dest_port,
                                 _socket->retries, registry_get_size());
                     }
@@ -138,9 +138,9 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                 break;
 
             case (SYN_BIT + ACK_BIT): /* SYN + ACK */
-                //printf("\r\n2. SYN-ACK %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: %#02x \r\n",
-                //        source_ip_str, source_port, dest_ip_str, dest_port,
-                //        syn, fin, ack, flags);
+                log_printf(LOG_DEBUG, "\r\n2. SYN-ACK %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: "PRINTF_BIN_FMT_INT8"  \r\n",
+                        source_ip_str, source_port, dest_ip_str, dest_port,
+                        syn, fin, ack, PRINTF_BINARY_INT8(flags));
 
                 /* in this case server socket responds to client, but we need key formatted: src-dst */
                 new_socket.src_addr = ip_header->daddr;
@@ -152,7 +152,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                 new_socket.status = CONNECTING;
 
                 sprintf(key, "%s:%d-%s:%d", dest_ip_str, dest_port, source_ip_str, source_port);
-                //printf("key: %s \r\n", key);
+                log_printf(LOG_VERBOSE, "key: %s \r\n", key);
 
                 _socket = registry_get_socket(key);
                 if (_socket) {
@@ -161,32 +161,29 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                         _socket->state = new_socket.state;
                         _socket->status = new_socket.status;
                     } else {
-                        printf("got SYN-ACK, but there was no SYN before! \r\n");
-                        printf("SYN-ACK %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: %#02x \r\n",
-                                source_ip_str, source_port, dest_ip_str, dest_port,
-                                syn, fin, ack, flags);
-
+                        // got SYN + ACK, but there was no SYN sent before
                         _socket->state = UNKNOWN;
                         bool remove_ret = registry_remove_socket(key);
-                        printf("removing socket from registry: %s res: %s size: %d \r\n",
+                        log_printf(LOG_VERBOSE, "SYN+ACK but no previous SYN, removing socket from registry: %s res: %s size: %d \r\n",
                                 key, remove_ret ? "success":"failed", registry_get_size());
                     }
                 }
                 break;
 
             case ACK_BIT: /* ACK */
-                //printf("\r\n3. ACK %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: %#02x \r\n",
-                //        source_ip_str, source_port, dest_ip_str, dest_port,
-                //        syn, fin, ack, flags);
+                log_printf(LOG_DEBUG, "\r\n1. ACK %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: "PRINTF_BIN_FMT_INT8 " \r\n",
+                        source_ip_str, source_port, dest_ip_str, dest_port,
+                        syn, fin, ack, PRINTF_BINARY_INT8(flags));
 
                 new_socket.state = ACK;
 
                 sprintf(key, "%s:%d-%s:%d", source_ip_str, source_port, dest_ip_str, dest_port);
-                //printf("key: %s \r\n", key);
+                log_printf(LOG_VERBOSE, "key: %s \r\n", key);
 
                 _socket = registry_get_socket(key);
                 if (!_socket) {
-                    //printf("swap src<->dst\r\n");
+                    // since could not find registered socket, doing swap and try again
+                    log_printf(LOG_VERBOSE, "swap src<->dst\r\n");
                     sprintf(key, "%s:%d-%s:%d", dest_ip_str, dest_port, source_ip_str, source_port);
                     _socket = registry_get_socket(key);
                 }
@@ -194,7 +191,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                     /* check stored socket state */
                     switch (_socket->state) {
                         case SYN_ACK:
-                            printf("CONNECTED    %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
+                            log_printf(LOG_INFO, "CONNECTED    %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
                                     source_ip_str, source_port, dest_ip_str, dest_port,
                                     _socket->retries, registry_get_size());
 
@@ -204,7 +201,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                             break;
 
                         case FIN_ACK2:
-                            printf("DISCONNECTED %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
+                            log_printf(LOG_INFO, "DISCONNECTED %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
                                     source_ip_str, source_port, dest_ip_str, dest_port,
                                     _socket->retries, registry_get_size());
 
@@ -214,28 +211,28 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                             _socket->retries = 0;
 
                             bool remove_ret = registry_remove_socket(key);
-                            printf("removing socket from registry: %s res: %s size: %d \r\n",
+                            log_printf(LOG_VERBOSE, "removing socket from registry: %s res: %s size: %d \r\n",
                                     key, remove_ret ? "success":"failed", registry_get_size());
                             break;
 
                         default:
-                            //printf("received ACK \r\n");
+                            log_printf(LOG_VERBOSE, "received ACK for previous socket state: %d\r\n", _socket->state);
                             break;
                     }
                 } else {
-                    //printf("could not find socket for: %s \r\n", key);
+                    log_printf(LOG_VERBOSE, "could not find socket for: %s \r\n", key);
                     return;
                 }
                 break;
 
             case FIN_BIT: /* FIN, FIN + ACK */
             case FIN_BIT + ACK_BIT:
-                //printf("\r\n1. FIN %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: %#02x \r\n",
-                //        source_ip_str, source_port, dest_ip_str, dest_port,
-                //        syn, fin, ack, flags);
+                log_printf(LOG_DEBUG, "\r\n1. FIN %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: "PRINTF_BIN_FMT_INT8 " \r\n",
+                        source_ip_str, source_port, dest_ip_str, dest_port,
+                        syn, fin, ack, PRINTF_BINARY_INT8(flags));
 
                 sprintf(key, "%s:%d-%s:%d", source_ip_str, source_port, dest_ip_str, dest_port);
-                //printf("key1: %s \r\n", key);
+                log_printf(LOG_VERBOSE, "key: %s \r\n", key);
 
                 new_socket.status = DISCONNECTING;
 
@@ -249,7 +246,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                 } else {
                     /* FIN + ACK from dst, so reverse src <-> dst to check if we have this socket */
                     sprintf(key, "%s:%d-%s:%d", dest_ip_str, dest_port, source_ip_str, source_port);
-                    //printf("key2: %s \r\n", key);
+                    log_printf(LOG_VERBOSE, "key: %s \r\n", key);
 
                     _socket = registry_get_socket(key);
                     if (_socket) {
@@ -263,12 +260,12 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                 break;
 
             default:
-                //printf("Failed to get masked flags: %d \r\n", masked_flags);
+                log_printf(LOG_DEBUG, "unsupported masked flags: %d \r\n", masked_flags);
                 return;
         }
 
         if (!_socket) {
-            //printf("socket: %s is not present in registry \r\n", key);
+            log_printf(LOG_DEBUG, "socket: %s is not present in registry \r\n", key);
 
             /* allocated packet will be destroyed on hash table unref */
             socket_container_t *socket2store = (socket_container_t *) malloc(sizeof(socket_container_t));

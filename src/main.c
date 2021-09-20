@@ -9,6 +9,8 @@
 #include "socket_registry.h"
 #include "packet_handler.h"
 
+#include "logger.h"
+
 #define ALIGNMENT_SPACES 20
 
 void print_all_interfaces() {
@@ -18,7 +20,7 @@ void print_all_interfaces() {
 
     error = pcap_findalldevs(&interfaces, err_buff);
     if (error != 0) {
-        fprintf(stderr, "pcap_findalldevs failed: %s\n", err_buff);
+        log_printf(LOG_ERROR, "pcap_findalldevs failed: %s\n", err_buff);
         return;
     }
 
@@ -26,10 +28,10 @@ void print_all_interfaces() {
     int i=0;
 
     char *table_header[] = {"num", "interface name", "description"};
-    printf("%*s   %*s   %*s\n\r", -3, table_header[0], -ALIGNMENT_SPACES, table_header[1], -ALIGNMENT_SPACES, table_header[2]);
-    printf("%*c   %*c   %*c\n\r", -3, '-', -ALIGNMENT_SPACES, '-', -ALIGNMENT_SPACES, '-');
+    log_printf(LOG_INFO, "%*s   %*s   %*s\n\r", -3, table_header[0], -ALIGNMENT_SPACES, table_header[1], -ALIGNMENT_SPACES, table_header[2]);
+    log_printf(LOG_INFO, "%*c   %*c   %*c\n\r", -3, '-', -ALIGNMENT_SPACES, '-', -ALIGNMENT_SPACES, '-');
     while (cur_interface) {
-        printf("%-3d : %*s   %*s\n\r", i++, -ALIGNMENT_SPACES, cur_interface->name, -ALIGNMENT_SPACES,
+        log_printf(LOG_INFO, "%-3d : %*s   %*s\n\r", i++, -ALIGNMENT_SPACES, cur_interface->name, -ALIGNMENT_SPACES,
                 cur_interface->description ? cur_interface->description : "(no description)");
         cur_interface = cur_interface->next;
     }
@@ -39,8 +41,9 @@ void print_all_interfaces() {
 }
 
 // TODO: make a nice Usage
-void print_usage() {
-    fprintf(stderr, "Usage: Here woud be Usage soon\r\n");
+void print_usage(char *argv) {
+    log_printf(LOG_ERROR, "Usage: Here would be Usage soon %s\r\n", argv);
+    printf("INFO: pcap sniffer, sniffs traffic for established connections on specific or all interfaces \r\n");
 }
 
 //  Option to sniff all interfaces
@@ -53,11 +56,9 @@ int main(int argc, char *argv[]) {
     char errbuf[PCAP_ERRBUF_SIZE];
     int res;
 
-    printf("INFO: pcap sniffer, sniffs traffic for established connections on specific or all interfaces \r\n");
-
     if ( argc <= 1 ) {
         print_all_interfaces();
-        print_usage();
+        print_usage(argv[0]);
         exit(1);
     }
 
@@ -91,31 +92,31 @@ int main(int argc, char *argv[]) {
 
     pcap_t* pcap = pcap_open_live(device, 65535, 1, 100, errbuf);
     if (pcap == NULL) {
-        fprintf(stderr, "pcap_open_live failed: %s\n", errbuf);
+        log_printf(LOG_ERROR, "pcap_open_live failed: %s\n", errbuf);
         return 1;
     }
 
     struct bpf_program filterprog;
     res = pcap_compile(pcap, &filterprog, filter, 0, PCAP_NETMASK_UNKNOWN);
     if (res != 0) {
-        fprintf(stderr, "pcap_compile failed: %s\n", pcap_geterr(pcap));
+        log_printf(LOG_ERROR, "pcap_compile failed: %s\n", pcap_geterr(pcap));
         goto error;
     }
 
     res = pcap_setfilter(pcap, &filterprog);
     if (res != 0) {
-        fprintf(stderr, "pcap_setfilter failed: %s\n", pcap_geterr(pcap));
+        log_printf(LOG_ERROR, "pcap_setfilter failed: %s\n", pcap_geterr(pcap));
         goto error;
     }
 
-    printf("Listening %s, filter: %s...\n", device, filter);
+    log_printf(LOG_DEBUG, "Listening %s, filter: %s...\n", device, filter);
 
     registry_init();
 
     res = pcap_loop(pcap, -1, handle_packet, NULL);
-    printf("pcap_loop returned %d\n", res);
+    log_printf(LOG_DEBUG, "pcap_loop returned %d\n", res);
 
-    registry_destory();
+    registry_destroy();
 
     pcap_close(pcap);
     return 0;
