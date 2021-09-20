@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include <signal.h>
 #include <string.h>
 
 #include <pcap.h>
@@ -24,7 +25,17 @@ extern char *optarg;
 extern int optind;
 
 /* Global variables */
+pcap_t* pcap;
+
 int opt_all = 0;
+
+void int_handler(int signo) {
+    if (signo == SIGINT) {
+        log_printf(LOG_ERROR, "\r\nSIGINT terminating pcap_loop \r\n");
+        if (pcap)
+            pcap_breakloop(pcap);
+    }
+}
 
 void print_all_interfaces() {
     int error;
@@ -72,6 +83,9 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    /* register signal handler for graceful pcap_loop termination */
+    signal(SIGINT, int_handler);
+
     uint8_t retries_treshhold;
     while ((opt = getopt(argc, argv, "i:f:r:av::")) != -1) {
         switch (opt) {
@@ -105,7 +119,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    pcap_t* pcap = pcap_open_live(device, 65535, 1, 100, errbuf);
+    pcap = pcap_open_live(device, 65535, 1, 100, errbuf);
     if (pcap == NULL) {
         log_printf(LOG_ERROR, "pcap_open_live failed: %s\n", errbuf);
         return 1;
