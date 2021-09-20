@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+
 #include <string.h>
 
 #include <pcap.h>
@@ -12,6 +14,17 @@
 #include "logger.h"
 
 #define ALIGNMENT_SPACES 20
+
+/* Extern variables */
+extern g_syn_retries;
+
+extern g_loglevel;
+
+extern char *optarg;
+extern int optind;
+
+/* Global variables */
+int opt_all = 0;
 
 void print_all_interfaces() {
     int error;
@@ -46,15 +59,12 @@ void print_usage(char *argv) {
     printf("INFO: pcap sniffer, sniffs traffic for established connections on specific or all interfaces \r\n");
 }
 
-//  Option to sniff all interfaces
-int opt_all = 0;
-
 int main(int argc, char *argv[]) {
 
     const char* device = NULL;
     const char* filter = NULL;
     char errbuf[PCAP_ERRBUF_SIZE];
-    int res;
+    int res, opt;
 
     if ( argc <= 1 ) {
         print_all_interfaces();
@@ -62,32 +72,37 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    argc--;
-    argv++;
-    while (argc) {
-        if (!strcmp(*argv, "-i")) {
-            argc--;
-            argv++;
-            printf("Interface name: -i %s\n\r", *argv);
-            device = *argv;
-        } else {
-            opt_all = 1;
-        }
+    uint8_t retries_treshhold;
+    while ((opt = getopt(argc, argv, "i:f:r:av::")) != -1) {
+        switch (opt) {
+            case 'i':
+                device = optarg;
+                break;
+            case 'f':
+                filter = optarg;
+                break;
+            case 'a':
+                opt_all = 1;
+                device = NULL;
+                break;
+            case 'v':
+                g_loglevel = LOG_DEBUG;
+                if (optarg) {
+                    if (!strcmp(optarg, "v"))
+                        g_loglevel = LOG_VERBOSE;
+                }
+                break;
+            case 'r':
+                retries_treshhold = (uint8_t) atoi(optarg);
+                if (retries_treshhold != 0)
+                    g_syn_retries = retries_treshhold;
+                break;
 
-        if (!strcmp(*argv, "-f")) {
-            argc--;
-            argv++;
-            printf("Filter:  %s\n\r", *argv);
-            filter = *argv;
+                break;
+            default: /* '?' */
+                print_usage(argv[0]);
+                exit(EXIT_FAILURE);
         }
-
-        if (!strcmp(*argv, "-a")) {
-            opt_all = 1;
-            device = NULL;
-        }
-
-        argc--;
-        argv++;
     }
 
     pcap_t* pcap = pcap_open_live(device, 65535, 1, 100, errbuf);

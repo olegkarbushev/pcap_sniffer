@@ -4,6 +4,8 @@
 #define SYN_BIT (1<<1)
 #define ACK_BIT (1<<4)
 
+int8_t g_syn_retries = 6;
+
 // not used for now
 #if 0
 void print_data_hex(const uint8_t* data, int size) {
@@ -126,7 +128,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                     // TODO: here must be more robust retries handling
                     log_printf(LOG_DEBUG, "SYN retries %d for: %s \r\n", ++(_socket->retries), key);
                     _socket->flags = flags;
-                    if (_socket->retries >= 6 ) {
+                    if (_socket->retries >= g_syn_retries ) {
                         _socket->status = FAILED;
                               //FAILED
                         log_printf(LOG_INFO, "FAILED       %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
