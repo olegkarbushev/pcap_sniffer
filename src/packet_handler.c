@@ -49,8 +49,15 @@ void print_data_hex(const uint8_t* data, int size) {
 #endif
 
 
+/* In case of heavy traffic - this callback would cause delay
+ * and ringbuffer or queue is preferable to be used.
+ * the callback will only save package, but package parsing should
+ * be done in a separate thread
+ *
+ * For this now it looks like parsing just in handle_packet
+ * does not cause performance issues.
+ */
 void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* bytes) {
-    // struct ethhdr* ethernet_header = (struct ethhdr *)bytes;
     struct iphdr* ip_header = (struct iphdr*) (bytes + sizeof(struct ethhdr));
     struct sockaddr_in source, dest;
 
@@ -78,6 +85,17 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
 
     char* next_header = (char* ) ip_header + ip_header_size;
 
+    /* KEY to be stored in hashtable
+     * formatted:
+     * "src_addr:src:port-dst_addr:dst_port"
+     * pros:
+     *      makes it possible to put/get values from hashtable
+     * cons:
+     *      depends on string formatting
+     *      some packets has swapped src<->dst addr, port
+     */
+    char key[50];
+
     if (ip_header->protocol == IP_HEADER_PROTOCOL_TCP) {
         struct tcphdr* tcp_header = (struct tcphdr* ) next_header;
         source_port = ntohs(tcp_header->source);
@@ -91,10 +109,8 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
 
         flags_full = tcp_header->flags;
 
-        /* here should be handling of packets */
-        flags = (flags_full & 0xff00) >> 8; /* since we need only less significant part */
-
-        char key[50];
+        /* since we need only less significant part */
+        flags = (flags_full & 0xff00) >> 8;
 
         socket_container_t new_socket;
 
@@ -113,7 +129,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
         uint8_t masked_flags = flags & (SYN_BIT + ACK_BIT + FIN_BIT);
         switch (masked_flags) {
             case SYN_BIT: /* SYN */
-                log_printf(LOG_DEBUG, "\r\n1. SYN %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: "PRINTF_BIN_FMT_INT8 " \r\n",
+                log_printf(LOG_DEBUG, "\r\n1. SYN %-15s:%-5d -> %-15s:%-5d, syn:%d, fin:%d, ack:%d flags: "PRINTF_BIN_FMT_INT8" \r\n",
                         source_ip_str, source_port, dest_ip_str, dest_port,
                         syn, fin, ack, PRINTF_BINARY_INT8(flags));
 
@@ -130,7 +146,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                     _socket->flags = flags;
                     if (_socket->retries >= g_syn_retries ) {
                         _socket->status = FAILED;
-                              //FAILED
+                        //FAILED
                         log_printf(LOG_INFO, "FAILED       %-15s:%-5d -> %-15s:%-5d, retries:%d sockets count: %d \r\n\r\n",
                                 source_ip_str, source_port, dest_ip_str, dest_port,
                                 _socket->retries, registry_get_size());
@@ -275,21 +291,13 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
             *socket2store = new_socket;
 
             if (registry_add_socket(key, socket2store)) {
-                //printf("added %s to registry, size: %d \r\n", key, registry_get_size());
+                log_printf(LOG_DEBUG, "added %s to registry, size: %d \r\n", key, registry_get_size());
             } else {
-                //printf("FAILED to add socket to the registry :( \r\n");
+                log_printf(LOG_ERROR, "FAILED to add socket to the registry :( \r\n");
+                exit(atoi( optarg );
             }
         }
     }
-#if 0
-    /* Commented out UDP packets handling */
-    else if (ip_header->protocol == IP_HEADER_PROTOCOL_UDP) { /* currently we need only TCP */
-        struct udphdr* udp_header = (struct udphdr* ) next_header;
-        source_port = ntohs(udp_header->source);
-        dest_port = ntohs(udp_header->dest);
-        data_size = hdr->len - sizeof(struct ethhdr) - ip_header_size - sizeof(struct udphdr);
-    }
-#endif
 
 #if 0
     if (data_size > 0) {
