@@ -28,6 +28,8 @@ pcap_t* g_pcap;
 
 char* g_log_file_name = NULL;
 
+// filter for SYN, ACK, FIN
+const char *syn_ack_fin_filter = "(tcp[13] & 19 != 0)";
 
 int g_opt_all = 0;
 
@@ -79,7 +81,6 @@ void print_usage(char *argv) {
 int main(int argc, char *argv[]) {
 
     const char* device = NULL;
-    const char* filter = NULL;
     char errbuf[PCAP_ERRBUF_SIZE];
     int res, opt;
 
@@ -139,7 +140,9 @@ int main(int argc, char *argv[]) {
     }
 
     struct bpf_program filterprog;
-    res = pcap_compile(pcap, &filterprog, filter, 0, PCAP_NETMASK_UNKNOWN);
+    /* filter for SYN, ACK"(tcp[13] & 19 != 0)"
+     */
+    res = pcap_compile(g_pcap, &filterprog, syn_ack_fin_filter, 0, PCAP_NETMASK_UNKNOWN);
     if (res != 0) {
         log_printf(LOG_ERROR, "pcap_compile failed: %s\n", pcap_geterr(g_pcap));
         goto error;
@@ -151,7 +154,7 @@ int main(int argc, char *argv[]) {
         goto error;
     }
 
-    log_printf(LOG_DEBUG, "Listening %s, filter: %s...\n", device, filter);
+    log_printf(LOG_DEBUG, "Listening %s, filter: %s...\n", device, syn_ack_fin_filter);
 
     registry_init();
 
