@@ -6,49 +6,6 @@
 
 int8_t g_syn_retries = 6;
 
-// not used for now
-#if 0
-void print_data_hex(const uint8_t* data, int size) {
-    int offset = 0;
-    int nlines = size / PRINT_BYTES_PER_LINE;
-
-    if (nlines * PRINT_BYTES_PER_LINE < size)
-        nlines++;
-
-    printf("        ");
-
-    for (int i = 0; i < PRINT_BYTES_PER_LINE; i++)
-        printf("%02X ", i);
-
-    printf("\n\n");
-
-    for (int line = 0; line < nlines; line++) {
-        printf("%04X    ", offset);
-        for (int j = 0; j < PRINT_BYTES_PER_LINE; j++) {
-            if (offset + j >= size)
-                printf("   ");
-            else
-                printf("%02X ", data[offset + j]);
-        }
-
-        printf("   ");
-
-        for (int j = 0; j < PRINT_BYTES_PER_LINE; j++) {
-            if (offset + j >= size)
-                printf(" ");
-            else if (data[offset + j] > 31 && data[offset + j] < 127)
-                printf("%c", data[offset + j]);
-            else
-                printf(".");
-        }
-
-        offset += PRINT_BYTES_PER_LINE;
-        printf("\n");
-    }
-}
-#endif
-
-
 /* In case of heavy traffic - this callback would cause delay
  * and ringbuffer or queue is preferable to be used.
  * the callback will only save package, but package parsing should
@@ -298,11 +255,4 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
             }
         }
     }
-
-#if 0
-    if (data_size > 0) {
-        int headers_size = hdr->len - data_size;
-        print_data_hex(bytes + headers_size, data_size);
-    }
-#endif
 }
