@@ -79,19 +79,17 @@ void print_usage(char *argv) {
 }
 
 int main(int argc, char *argv[]) {
-
     const char* device = NULL;
     char errbuf[PCAP_ERRBUF_SIZE];
+    struct bpf_program filterprog;
     int res, opt;
-
-    printf("arc: %d, argv[0]: %s \r\n", argc, argv[0]);
 
     if ( argc <= 1 ) {
         print_usage(argv[0]);
         exit(EXIT_SUCCESS);
     }
 
-    /* register signal handler for graceful pcap_loop termination */
+    // register signal handler for graceful pcap_loop termination
     signal(SIGINT, int_handler);
 
     atexit(exit_handler);
@@ -138,9 +136,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    struct bpf_program filterprog;
-    /* filter for SYN, ACK"(tcp[13] & 19 != 0)"
-     */
     res = pcap_compile(g_pcap, &filterprog, syn_ack_fin_filter, 0, PCAP_NETMASK_UNKNOWN);
     if (res != 0) {
         log_printf(LOG_ERROR, "pcap_compile failed: %s\n", pcap_geterr(g_pcap));
