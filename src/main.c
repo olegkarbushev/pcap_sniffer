@@ -18,25 +18,24 @@
 
 /* Extern variables */
 extern g_syn_retries;
-
 extern g_loglevel;
 
 extern char *optarg;
 extern int optind;
 
 /* Global variables */
-pcap_t* pcap;
+pcap_t* g_pcap;
 
 char* g_log_file_name = NULL;
 
 
-int opt_all = 0;
+int g_opt_all = 0;
 
 void int_handler(int signo) {
     if (signo == SIGINT) {
-        log_printf(LOG_ERROR, "\r\nSIGINT terminating pcap_loop \r\n");
-        if (pcap)
-            pcap_breakloop(pcap);
+        log_printf(LOG_DEBUG, "\r\nSIGINT terminating pcap_loop \r\n");
+        if (g_pcap)
+            pcap_breakloop(g_pcap);
     }
 }
 
@@ -106,8 +105,7 @@ int main(int argc, char *argv[]) {
                 log_open_file(g_log_file_name);
                 break;
             case 'a':
-                opt_all = 1;
-                device = NULL;
+                g_opt_all = 1;
                 break;
             case 'v':
                 g_loglevel = LOG_DEBUG;
@@ -129,8 +127,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    pcap = pcap_open_live(device, 65535, 1, 100, errbuf);
-    if (pcap == NULL) {
+    if (g_opt_all) {
+        print_all_interfaces();
+        exit(EXIT_SUCCESS);
+    }
+
+    g_pcap = pcap_open_live(device, 65535, 1, 100, errbuf);
+    if (g_pcap == NULL) {
         log_printf(LOG_ERROR, "pcap_open_live failed: %s\n", errbuf);
         return 1;
     }
@@ -138,13 +141,13 @@ int main(int argc, char *argv[]) {
     struct bpf_program filterprog;
     res = pcap_compile(pcap, &filterprog, filter, 0, PCAP_NETMASK_UNKNOWN);
     if (res != 0) {
-        log_printf(LOG_ERROR, "pcap_compile failed: %s\n", pcap_geterr(pcap));
+        log_printf(LOG_ERROR, "pcap_compile failed: %s\n", pcap_geterr(g_pcap));
         goto error;
     }
 
-    res = pcap_setfilter(pcap, &filterprog);
+    res = pcap_setfilter(g_pcap, &filterprog);
     if (res != 0) {
-        log_printf(LOG_ERROR, "pcap_setfilter failed: %s\n", pcap_geterr(pcap));
+        log_printf(LOG_ERROR, "pcap_setfilter failed: %s\n", pcap_geterr(g_pcap));
         goto error;
     }
 
@@ -152,15 +155,15 @@ int main(int argc, char *argv[]) {
 
     registry_init();
 
-    res = pcap_loop(pcap, -1, handle_packet, NULL);
+    res = pcap_loop(g_pcap, -1, handle_packet, NULL);
     log_printf(LOG_DEBUG, "pcap_loop returned %d\n", res);
 
     registry_destroy();
 
-    pcap_close(pcap);
+    pcap_close(g_pcap);
     return EXIT_SUCCESS;
 
 error:
-    pcap_close(pcap);
+    pcap_close(g_pcap);
     return EXIT_FAILURE;
 }
