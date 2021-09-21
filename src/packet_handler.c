@@ -294,7 +294,7 @@ void handle_packet(uint8_t* user, const struct pcap_pkthdr *hdr, const uint8_t* 
                 log_printf(LOG_DEBUG, "added %s to registry, size: %d \r\n", key, registry_get_size());
             } else {
                 log_printf(LOG_ERROR, "FAILED to add socket to the registry :( \r\n");
-                exit(atoi( optarg );
+                exit(EXIT_FAILURE);
             }
         }
     }

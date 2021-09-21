@@ -27,6 +27,9 @@ extern int optind;
 /* Global variables */
 pcap_t* pcap;
 
+char* g_log_file_name = NULL;
+
+
 int opt_all = 0;
 
 void int_handler(int signo) {
@@ -35,6 +38,10 @@ void int_handler(int signo) {
         if (pcap)
             pcap_breakloop(pcap);
     }
+}
+
+void exit_handler() {
+    log_close_file();
 }
 
 void print_all_interfaces() {
@@ -86,6 +93,8 @@ int main(int argc, char *argv[]) {
     /* register signal handler for graceful pcap_loop termination */
     signal(SIGINT, int_handler);
 
+    atexit(exit_handler);
+
     uint8_t retries_treshhold;
     while ((opt = getopt(argc, argv, "i:f:r:av::")) != -1) {
         switch (opt) {
@@ -93,7 +102,8 @@ int main(int argc, char *argv[]) {
                 device = optarg;
                 break;
             case 'f':
-                filter = optarg;
+                g_log_file_name = optarg;
+                log_open_file(g_log_file_name);
                 break;
             case 'a':
                 opt_all = 1;
@@ -148,9 +158,9 @@ int main(int argc, char *argv[]) {
     registry_destroy();
 
     pcap_close(pcap);
-    return 0;
+    return EXIT_SUCCESS;
 
 error:
     pcap_close(pcap);
-    return 1;
+    return EXIT_FAILURE;
 }
