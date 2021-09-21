@@ -31,7 +31,7 @@ char* g_log_file_name = NULL;
 // filter for SYN, ACK, FIN
 const char *syn_ack_fin_filter = "(tcp[13] & 19 != 0)";
 
-int g_opt_all = 0;
+int g_opt_print_all = 0;
 
 void int_handler(int signo) {
     if (signo == SIGINT) {
@@ -52,7 +52,7 @@ void print_all_interfaces() {
 
     error = pcap_findalldevs(&interfaces, err_buff);
     if (error != 0) {
-        log_printf(LOG_ERROR, "pcap_findalldevs failed: %s\n", err_buff);
+        log_printf(LOG_ERROR, "pcap_findalldevs failed: %s\r\n", err_buff);
         return;
     }
 
@@ -72,10 +72,10 @@ void print_all_interfaces() {
         pcap_freealldevs(interfaces);
 }
 
-// TODO: make a nice Usage
 void print_usage(char *argv) {
-    log_printf(LOG_ERROR, "Usage: Here would be Usage soon %s\r\n", argv);
-    printf("INFO: pcap sniffer, sniffs traffic for established connections on specific or all interfaces \r\n");
+    log_printf(LOG_ERROR, "Usage: \n\t%s [-p] [-i interface name] [-f log file] [-v] [-r retries threshold]\r\n", argv);
+    log_printf(LOG_ERROR, "\n\tSniffs traffic for established/terminated connections on specific or all interfaces \r\n");
+    log_printf(LOG_ERROR, "\n\tExample usage: \n\t%s -i eth0 -vv -f logfile.log\r\n", argv);
 }
 
 int main(int argc, char *argv[]) {
@@ -84,10 +84,11 @@ int main(int argc, char *argv[]) {
     char errbuf[PCAP_ERRBUF_SIZE];
     int res, opt;
 
+    printf("arc: %d, argv[0]: %s \r\n", argc, argv[0]);
+
     if ( argc <= 1 ) {
-        print_all_interfaces();
         print_usage(argv[0]);
-        exit(1);
+        exit(EXIT_SUCCESS);
     }
 
     /* register signal handler for graceful pcap_loop termination */
@@ -96,7 +97,7 @@ int main(int argc, char *argv[]) {
     atexit(exit_handler);
 
     uint8_t retries_treshhold;
-    while ((opt = getopt(argc, argv, "i:f:r:av::")) != -1) {
+    while ((opt = getopt(argc, argv, "i:f:r:pv::")) != -1) {
         switch (opt) {
             case 'i':
                 device = optarg;
@@ -105,14 +106,13 @@ int main(int argc, char *argv[]) {
                 g_log_file_name = optarg;
                 log_open_file(g_log_file_name);
                 break;
-            case 'a':
-                g_opt_all = 1;
+            case 'p':
+                g_opt_print_all = 1;
                 break;
             case 'v':
                 g_loglevel = LOG_DEBUG;
                 if (optarg) {
-                    if (!strcmp(optarg, "v"))
-                        g_loglevel = LOG_VERBOSE;
+                    if (!strcmp(optarg, "v")) g_loglevel = LOG_VERBOSE;
                 }
                 break;
             case 'r':
@@ -121,14 +121,13 @@ int main(int argc, char *argv[]) {
                     g_syn_retries = retries_treshhold;
                 break;
 
-                break;
             default: /* '?' */
                 print_usage(argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
 
-    if (g_opt_all) {
+    if (g_opt_print_all) {
         print_all_interfaces();
         exit(EXIT_SUCCESS);
     }

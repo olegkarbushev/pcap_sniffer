@@ -11,7 +11,7 @@ void log_printf(loglevel_t loglevel, char *fmt, ...) {
     va_list f_arg_ptr;
 
     va_start(arg_ptr, fmt);
-    va_copy(f_arg_ptr, arg_ptr);
+    if (logfile) va_copy(f_arg_ptr, arg_ptr);
 
     if (loglevel == LOG_ERROR) {
         vfprintf(stderr, fmt, arg_ptr);
@@ -21,7 +21,7 @@ void log_printf(loglevel_t loglevel, char *fmt, ...) {
         if (logfile) vfprintf(logfile, fmt, f_arg_ptr);
     }
 
-    va_end(f_arg_ptr);
+    if (logfile) va_end(f_arg_ptr);
     va_end(arg_ptr);
 }
 
